@@ -32,8 +32,8 @@ jobs:
         if: always()  # Отправляет уведомление даже при ошибке
         uses: appleboy/telegram-action@v1
         with:
-          token: ${{ secrets.TELEGRAM_TOKEN }}
-          to: ${{ secrets.TELEGRAM_CHAT_ID }}
+          token: ${{ secrets.PytestBot }}
+          to: ${{946878017}}
           message: |
             ${{ job.status }}: Tests in ${{ github.repository }} 
             ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
