@@ -59,7 +59,7 @@ def test_get_artist(): #возврат артиста
 
 
 def test_remove_artist(): #удаление артиста
-   # assert remove_artist("song [Artist A].mp3") == "song.mp3"
+    assert remove_artist("song [Artist A].mp3") == "song.mp3"
     assert remove_artist("track.mp3") == "track.mp3"
 
 
@@ -192,16 +192,16 @@ def test_reindex_folders(temp_dir):
             assert "(" in folder.name and ")" in folder.name #есть счетчик
 
 
-#def test_empty_artist_folder(temp_dir): #пустая папка артиста
- #   (temp_dir / "Empty Artist").mkdir()
-  #  
-#
- #   mapping = get_updated_media_paths(temp_dir)
-           
-  #  apply_new_media_paths(mapping)
+def test_empty_artist_folder(temp_dir): #пустая папка артиста
+    (temp_dir / "Empty Artist").mkdir()
     
-   # assert not (temp_dir / "Empty Artist").exists() # Проверка, что пустая папка артиста не создана в новой структуре
+
+    mapping = get_updated_media_paths(temp_dir)
+         
+    apply_new_media_paths(mapping)
     
-    #assert (temp_dir / "Artist A").exists() 
-    #assert (temp_dir / "Artist B").exists() 
-    #assert (temp_dir / "VA").exists() 
+    assert not (temp_dir / "Empty Artist").exists() # Проверка, что пустая папка артиста не создана в новой структуре
+    
+    assert (temp_dir / "Artist A").exists() 
+    assert (temp_dir / "Artist B").exists() 
+    assert (temp_dir / "VA").exists() 
