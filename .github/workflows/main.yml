@@ -8,49 +8,52 @@ on:
 
 jobs:
   test-and-notify:
-    runs-on: ubuntu-22.04
+    runs-on: ubuntu-latest
 
     steps:
-      # Шаг 1: Получение кода
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      # Шаг 2: Настройка Python
-      - name: Set up Python 3.11
+      - name: Set up Python
         uses: actions/setup-python@v5
         with:
           python-version: "3.11"
           cache: 'pip'
 
-      # Шаг 3: Установка зависимостей
       - name: Install dependencies
         run: |
           pip install -r requirements.txt
           pip install -e .
 
-      # Шаг 4: Запуск тестов с сохранением результата
-      - name: Run tests and capture output
-        id: tests
+      - name: Run tests and process output
+        id: pytest
         run: |
-          pytest --verbose > test_results.log 2>&1 || echo "Tests failed"
-          echo "results=$(cat test_results.log)" >> $GITHUB_OUTPUT
+          # Запускаем тесты и сохраняем результат в файл
+          pytest --verbose > pytest_output.log 2>&1 || echo "Tests failed"
+          
+          # Очищаем вывод от лишней информации
+          grep -E 'FAILED|ERROR|passed' pytest_output.log > cleaned_output.log
+          
+          # Сохраняем статус выполнения (0 - успех, 1 - ошибка)
           echo "status=$?" >> $GITHUB_OUTPUT
+          
+          # Сохраняем очищенный вывод
+          echo "results<<EOF" >> $GITHUB_OUTPUT
+          cat cleaned_output.log >> $GITHUB_OUTPUT
+          echo "EOF" >> $GITHUB_OUTPUT
 
-      # Шаг 5: Отправка уведомления в Telegram
-      - name: Notify Telegram with test results
+      - name: Notify Telegram
         uses: appleboy/telegram-action@master
         with:
-          token: ${{ secrets.PYTESTBOT}}
+          token: ${{ secrets.TELEGRAM_TOKEN }}
           chat_id: "946878017"
           message: |
-            ${{ job.status }}: Тесты завершены
-            Репозиторий: ${{ github.repository }}
-            Ветка: ${{ github.ref }}
+            ${{ fromJSON('{"0":"✅ Все тесты прошли успешно","1":"❌ Обнаружены ошибки в тестах"}')[steps.pytest.outputs.status] }}
             
-            ${{ fromJSON('{"0":"✅ Все тесты прошли успешно","1":"❌ Обнаружены ошибки в тестах"}')[steps.tests.outputs.status] }}
+            Результаты тестов:
+            ```
+            ${{ steps.pytest.outputs.results }}
+            ```
             
-            Последние результаты:
-            ${{ format('{0}', steps.tests.outputs.results) }}
-
             Подробности: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
         if: always()
