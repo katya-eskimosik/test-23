@@ -27,3 +27,10 @@ jobs:
 
       - name: Run tests
         run: pytest --verbose
+
+      - name: Notify Telegram
+        uses: appleboy/telegram-action@v1
+        with:
+          token: ${{ secrets.PytestBot }}
+          chat_id: "946878017"
+        if: always() 
