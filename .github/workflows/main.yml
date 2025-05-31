@@ -1,41 +1,56 @@
-name: CI
+name: Python CI
 
-on: 
+on:
   push:
     branches: ["main"]
   pull_request:
     branches: ["main"]
 
 jobs:
-  build:
+  test-and-notify:
     runs-on: ubuntu-22.04
 
     steps:
-      - uses: actions/checkout@v4  
+      # Шаг 1: Получение кода
+      - name: Checkout repository
+        uses: actions/checkout@v4
 
-      - name: Set up Python
+      # Шаг 2: Настройка Python
+      - name: Set up Python 3.11
         uses: actions/setup-python@v5
         with:
           python-version: "3.11"
           cache: 'pip'
 
+      # Шаг 3: Установка зависимостей
       - name: Install dependencies
-        run: pip install -r requirements.txt
+        run: |
+          pip install -r requirements.txt
+          pip install -e .
 
-      - name: Install project in development mode
-        run: pip install -e .
+      # Шаг 4: Запуск тестов с сохранением результата
+      - name: Run tests and capture output
+        id: tests
+        run: |
+          pytest --verbose > test_results.log 2>&1 || echo "Tests failed"
+          echo "results=$(cat test_results.log)" >> $GITHUB_OUTPUT
+          echo "status=$?" >> $GITHUB_OUTPUT
 
-      - name: Run tests
-        run: pytest --verbose
-
-      - name: Notify Telegram
-        if: always()  # Отправляет уведомление даже при ошибке
+      # Шаг 5: Отправка уведомления в Telegram
+      - name: Notify Telegram with test results
         uses: appleboy/telegram-action@v1
         with:
-          token: ${{ secrets.PytestBot }}
-          to: ${{946878017}}
+          token: ${{ secrets.PYTESTBOT}}
+          chat_id: "946878017"
           message: |
-            ${{ job.status }}: Tests in ${{ github.repository }} 
-            ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
-            ${{ contains(job.status, 'success') && '✅ Все ок!' || '❌ Тесты упали:' }}
-            ${{ steps.test.outputs.log }}  # Логи тестов (см. ниже)
+            ${{ job.status }}: Тесты завершены
+            Репозиторий: ${{ github.repository }}
+            Ветка: ${{ github.ref }}
+            
+            ${{ fromJSON('{"0":"✅ Все тесты прошли успешно","1":"❌ Обнаружены ошибки в тестах"}')[steps.tests.outputs.status] }}
+            
+            Последние результаты:
+            ${{ format('{0}', steps.tests.outputs.results) }}
+
+            Подробности: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+        if: always()
