@@ -1,4 +1,4 @@
-name: Python CI with Telegram Notifications
+name: Python CI with Simple Telegram Notifications
 
 on:
   push:
@@ -28,34 +28,18 @@ jobs:
         id: pytest
         continue-on-error: true
         run: |
-          # Создаем временные файлы
-          TEMP_OUTPUT=$(mktemp)
-          TEMP_REPORT=$(mktemp)
-          
           # Запускаем тесты и сохраняем вывод
-          pytest --verbose > "$TEMP_OUTPUT" 2>&1 || true
-          
-          # Сохраняем статус выполнения
+          pytest --verbose > pytest_output.log 2>&1 || true
           TEST_STATUS=$?
+          
+          # Формируем список ошибок (если есть)
+          if [ $TEST_STATUS -ne 0 ]; then
+            ERROR_REPORT=$(grep -E 'FAILED|ERROR' pytest_output.log | awk -F' ' '{print $1}')
+            echo "errors=$ERROR_REPORT" >> $GITHUB_OUTPUT
+          fi
+          
           echo "status=$TEST_STATUS" >> $GITHUB_OUTPUT
-          
-          # Формируем отчет
-          {
-            echo "=== Test Results Summary ==="
-            grep -E 'FAILED|ERROR|passed' "$TEMP_OUTPUT" | tail -n 1
-            echo ""
-            echo "=== Failed Tests ==="
-            grep -A 3 -E 'FAILED|ERROR' "$TEMP_OUTPUT" || echo "No failed tests"
-          } > "$TEMP_REPORT"
-          
-          # Сохраняем отчет
-          echo "report<<EOF" >> $GITHUB_OUTPUT
-          cat "$TEMP_REPORT" >> $GITHUB_OUTPUT
-          echo "EOF" >> $GITHUB_OUTPUT
-          
-          # Для отладки: выводим отчет в лог
-          echo "Generated report:"
-          cat "$TEMP_REPORT"
+          exit 0
 
       - name: Send Telegram notification
         uses: appleboy/telegram-action@v1.0.0
@@ -63,13 +47,7 @@ jobs:
           token: ${{ secrets.TELEGRAM_BOT_TOKEN }}
           to: ${{ secrets.TELEGRAM_CHAT_ID }}
           message: |
-            ${{ fromJSON('{"0":"✅ Все тесты прошли успешно","1":"❌ Обнаружены ошибки в тестах"}')[steps.pytest.outputs.status] }}
+            ${{ fromJSON('{"0":"✅ Все ок","1":"❌ Ошибки в тестах:\n```\n${{ steps.pytest.outputs.errors }}\n```"}')[steps.pytest.outputs.status] }}
             
-            📊 Результаты:
-            ```
-            ${{ steps.pytest.outputs.report }}
-            ```
-            
-            🔗 Подробнее: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+            Подробнее: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
         if: always()
-        
