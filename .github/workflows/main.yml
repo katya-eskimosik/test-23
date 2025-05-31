@@ -24,14 +24,52 @@ jobs:
           pip install -r requirements.txt
           pip install -e .
 
-      - name: Run tests and capture output
+      - name: Run tests and process output
         id: pytest
-        continue-on-error: true  # Продолжаем workflow даже при ошибке тестов
+        continue-on-error: true
         run: |
+          # Создаем временные файлы
+          TEMP_OUTPUT=$(mktemp)
+          TEMP_REPORT=$(mktemp)
+          
           # Запускаем тесты и сохраняем вывод
-          pytest --verbose > pytest_output.log 2>&1 || echo "Pytest завершился с ошибкой"
+          pytest --verbose > "$TEMP_OUTPUT" 2>&1 || true
+          
+          # Сохраняем статус выполнения
           TEST_STATUS=$?
+          echo "status=$TEST_STATUS" >> $GITHUB_OUTPUT
           
           # Формируем отчет
-          echo "=== Краткая
+          {
+            echo "=== Test Results Summary ==="
+            grep -E 'FAILED|ERROR|passed' "$TEMP_OUTPUT" | tail -n 1
+            echo ""
+            echo "=== Failed Tests ==="
+            grep -A 3 -E 'FAILED|ERROR' "$TEMP_OUTPUT" || echo "No failed tests"
+          } > "$TEMP_REPORT"
           
+          # Сохраняем отчет
+          echo "report<<EOF" >> $GITHUB_OUTPUT
+          cat "$TEMP_REPORT" >> $GITHUB_OUTPUT
+          echo "EOF" >> $GITHUB_OUTPUT
+          
+          # Для отладки: выводим отчет в лог
+          echo "Generated report:"
+          cat "$TEMP_REPORT"
+
+      - name: Send Telegram notification
+        uses: appleboy/telegram-action@v1.0.0
+        with:
+          token: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          to: ${{ secrets.TELEGRAM_CHAT_ID }}
+          message: |
+            ${{ fromJSON('{"0":"✅ Все тесты прошли успешно","1":"❌ Обнаружены ошибки в тестах"}')[steps.pytest.outputs.status] }}
+            
+            📊 Результаты:
+            ```
+            ${{ steps.pytest.outputs.report }}
+            ```
+            
+            🔗 Подробнее: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+        if: always()
+        
