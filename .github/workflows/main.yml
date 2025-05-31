@@ -46,13 +46,12 @@ jobs:
           token: ${{ secrets.TELEGRAM_BOT_TOKEN }}
           to: ${{ secrets.TELEGRAM_CHAT_ID }}
           message: |
-            ${{ fromJSON('{"0":"✅ Тесты прошли успешно","1":"❌ Тесты не прошли"}')[steps.pytest.outputs.status] }}
+            ${{ fromJSON('{"0":"Тесты прошли успешно","1":"Тесты не прошли"}')[steps.pytest.outputs.status] }}
             
             Результаты:
             ```
             ${{ steps.pytest.outputs.results }}
             ```
             
-            Ссылка на выполнение:
-            ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+
         if: always()
