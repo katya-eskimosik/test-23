@@ -1,4 +1,4 @@
-name: Python CI with Telegram Notifications
+name: Python CI with Detailed Telegram Reports
 
 on:
   push:
@@ -24,42 +24,8 @@ jobs:
           pip install -r requirements.txt
           pip install -e .
 
-      - name: Run tests and process output
+      - name: Run tests and generate report
         id: pytest
         run: |
           # Запускаем тесты и сохраняем вывод
-          pytest --verbose > pytest_output.log 2>&1
-          TEST_STATUS=$?
-          
-          # Сохраняем статус выполнения
-          echo "status=$TEST_STATUS" >> $GITHUB_OUTPUT
-          
-          # Формируем сокращенный отчет
-          FAILED_TESTS=$(grep -E 'FAILED|ERROR' pytest_output.log || echo "No failed tests")
-          SUMMARY=$(grep -E 'passed|FAILED|ERROR' pytest_output.log | tail -n 1)
-          
-          # Сохраняем результаты
-          echo "results<<EOF" >> $GITHUB_OUTPUT
-          echo "=== Краткий отчет ===" >> $GITHUB_OUTPUT
-          echo "$SUMMARY" >> $GITHUB_OUTPUT
-          echo "" >> $GITHUB_OUTPUT
-          echo "=== Ошибки ===" >> $GITHUB_OUTPUT
-          echo "$FAILED_TESTS" >> $GITHUB_OUTPUT
-          echo "EOF" >> $GITHUB_OUTPUT
-          
-          # Возвращаем реальный статус тестов
-          exit $TEST_STATUS
-
-      - name: Send Telegram notification
-        uses: appleboy/telegram-action@v1.0.0
-        with:
-          token: ${{ secrets.TELEGRAM_BOT_TOKEN }}
-          to: ${{ secrets.TELEGRAM_CHAT_ID }}
-          message: |
-            ${{ fromJSON('{"0":"✅ Все тесты прошли успешно!","1":"❌ Обнаружены ошибки в тестах!"}')[steps.pytest.outputs.status] }}
-            
-            📊 Результаты:
-            ${{ steps.pytest.outputs.results }}
-            
-            🔗 Подробнее: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
-        if: always()
+          pytest --verbose > pytest_output.log
