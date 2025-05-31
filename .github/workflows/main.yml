@@ -1,4 +1,4 @@
-name: Python CI with Simple Telegram Notifications
+name: Python CI with Accurate Telegram Notifications
 
 on:
   push:
@@ -24,30 +24,36 @@ jobs:
           pip install -r requirements.txt
           pip install -e .
 
-      - name: Run tests and process output
+      - name: Run tests and capture results
         id: pytest
-        continue-on-error: true
         run: |
           # Запускаем тесты и сохраняем вывод
-          pytest --verbose > pytest_output.log 2>&1 || true
+          pytest --verbose > pytest_output.log 2>&1
           TEST_STATUS=$?
           
-          # Формируем список ошибок (если есть)
-          if [ $TEST_STATUS -ne 0 ]; then
-            ERROR_REPORT=$(grep -E 'FAILED|ERROR' pytest_output.log | awk -F' ' '{print $1}')
-            echo "errors=$ERROR_REPORT" >> $GITHUB_OUTPUT
-          fi
+          # Извлекаем список упавших тестов
+          FAILED_TESTS=$(grep -E 'FAILED|ERROR' pytest_output.log | awk -F' ' '{print $1}' | tr '\n' ' ')
           
+          # Сохраняем результаты
           echo "status=$TEST_STATUS" >> $GITHUB_OUTPUT
-          exit 0
+          echo "failed_tests<<EOF" >> $GITHUB_OUTPUT
+          echo "$FAILED_TESTS" >> $GITHUB_OUTPUT
+          echo "EOF" >> $GITHUB_OUTPUT
+          
+          # Для отладки
+          echo "Test status: $TEST_STATUS"
+          echo "Failed tests: $FAILED_TESTS"
+          
+          # Возвращаем реальный статус тестов
+          exit $TEST_STATUS
 
       - name: Send Telegram notification
+        if: always()
         uses: appleboy/telegram-action@v1.0.0
         with:
           token: ${{ secrets.TELEGRAM_BOT_TOKEN }}
           to: ${{ secrets.TELEGRAM_CHAT_ID }}
           message: |
-            ${{ fromJSON('{"0":"✅ Все ок","1":"❌ Ошибки в тестах:\n```\n${{ steps.pytest.outputs.errors }}\n```"}')[steps.pytest.outputs.status] }}
+            ${{ fromJSON('{"0":"✅ Все ок","1":"❌ Упавшие тесты:\n```\n${{ steps.pytest.outputs.failed_tests }}\n```"}')[steps.pytest.outputs.status] }}
             
             Подробнее: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
-        if: always()
