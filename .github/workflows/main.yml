@@ -45,8 +45,8 @@ jobs:
       - name: Notify Telegram
         uses: appleboy/telegram-action@master
         with:
-          token: ${{7214927057:AAF-6jsllfALqjmdkfFsDAO58SU8ehQXAWc}}
-          to:  ${{946878017}}
+          token: ${{  7214927057:AAF-6jsllfALqjmdkfFsDAO58SU8ehQXAWc  }}
+          to:  ${{  946878017  }}
           message: |
             ${{ fromJSON('{"0":"Все тесты прошли успешно","1":" Обнаружены ошибки в тестах"}')[steps.pytest.outputs.status] }}
             
