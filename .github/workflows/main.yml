@@ -1,4 +1,4 @@
-name: Python CI with Accurate Telegram Notifications
+name: Python CI with Detailed Test Reports
 
 on:
   push:
@@ -24,15 +24,15 @@ jobs:
           pip install -r requirements.txt
           pip install -e .
 
-      - name: Run tests and capture results
+      - name: Run tests and capture failures
         id: pytest
         run: |
           # Запускаем тесты и сохраняем вывод
           pytest --verbose > pytest_output.log 2>&1
           TEST_STATUS=$?
           
-          # Извлекаем список упавших тестов
-          FAILED_TESTS=$(grep -E 'FAILED|ERROR' pytest_output.log | awk -F' ' '{print $1}' | tr '\n' ' ')
+          # Извлекаем только названия упавших тестов
+          FAILED_TESTS=$(grep -E 'FAILED|ERROR' pytest_output.log | awk -F'::' '{print $2}' | awk '{print $1}' | sort | uniq)
           
           # Сохраняем результаты
           echo "status=$TEST_STATUS" >> $GITHUB_OUTPUT
@@ -40,20 +40,33 @@ jobs:
           echo "$FAILED_TESTS" >> $GITHUB_OUTPUT
           echo "EOF" >> $GITHUB_OUTPUT
           
-          # Для отладки
+          # Отладочная информация
           echo "Test status: $TEST_STATUS"
-          echo "Failed tests: $FAILED_TESTS"
+          echo "Failed tests:"
+          echo "$FAILED_TESTS"
+          echo "Full output:"
+          cat pytest_output.log
           
-          # Возвращаем реальный статус тестов
           exit $TEST_STATUS
 
+      - name: Prepare Telegram message
+        id: prepare_message
+        run: |
+          if [ "${{ steps.pytest.outputs.status }}" == "0" ]; then
+            MESSAGE="✅ Все тесты прошли успешно"
+          else
+            MESSAGE="❌ Упавшие тесты:\n\`\`\`\n${{ steps.pytest.outputs.failed_tests }}\n\`\`\`"
+          fi
+          
+          echo "message<<EOF" >> $GITHUB_OUTPUT
+          echo "$MESSAGE" >> $GITHUB_OUTPUT
+          echo "EOF" >> $GITHUB_OUTPUT
+
       - name: Send Telegram notification
-        if: always()
         uses: appleboy/telegram-action@v1.0.0
         with:
           token: ${{ secrets.TELEGRAM_BOT_TOKEN }}
           to: ${{ secrets.TELEGRAM_CHAT_ID }}
-          message: |
-            ${{ fromJSON('{"0":"✅ Все ок","1":"❌ Упавшие тесты:\n```\n${{ steps.pytest.outputs.failed_tests }}\n```"}')[steps.pytest.outputs.status] }}
-            
-            Подробнее: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+          message: ${{ steps.prepare_message.outputs.message }}
+          format: "Markdown"
+        if: always()
