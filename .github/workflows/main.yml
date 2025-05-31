@@ -1,4 +1,4 @@
-name: Python CI
+name: Python CI with Telegram Notifications
 
 on:
   push:
@@ -11,49 +11,41 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      - name: Checkout repository
+      - name: Checkout code
         uses: actions/checkout@v4
 
       - name: Set up Python
         uses: actions/setup-python@v5
         with:
           python-version: "3.11"
-          cache: 'pip'
 
       - name: Install dependencies
         run: |
           pip install -r requirements.txt
           pip install -e .
 
-      - name: Run tests and process output
+      - name: Run tests
         id: pytest
         run: |
-          # Запускаем тесты и сохраняем результат в файл
-          pytest --verbose > pytest_output.log 2>&1 || echo "Tests failed"
-          
-          # Очищаем вывод от лишней информации
-          grep -E 'FAILED|ERROR|passed' pytest_output.log > cleaned_output.log
-          
-          # Сохраняем статус выполнения (0 - успех, 1 - ошибка)
+          pytest --verbose > pytest.log 2>&1 || echo "Tests failed"
           echo "status=$?" >> $GITHUB_OUTPUT
-          
-          # Сохраняем очищенный вывод
           echo "results<<EOF" >> $GITHUB_OUTPUT
-          cat cleaned_output.log >> $GITHUB_OUTPUT
+          cat pytest.log | grep -E 'FAILED|ERROR|passed' >> $GITHUB_OUTPUT
           echo "EOF" >> $GITHUB_OUTPUT
 
-      - name: Notify Telegram
-        uses: appleboy/telegram-action@master
+      - name: Send Telegram notification
+        uses: appleboy/telegram-action@v1.0.0
         with:
-          token: ${{  7214927057:AAF-6jsllfALqjmdkfFsDAO58SU8ehQXAWc  }}
-          to:  ${{  946878017  }}
+          token: ${{ secrets.TELEGRAM_BOT_TOKEN }}  # Должен быть задан в Secrets
+          to: ${{ secrets.TELEGRAM_CHAT_ID }}      # Должен быть задан в Secrets
           message: |
-            ${{ fromJSON('{"0":"Все тесты прошли успешно","1":" Обнаружены ошибки в тестах"}')[steps.pytest.outputs.status] }}
+            ${{ fromJSON('{"0":"✅ Тесты прошли успешно","1":"❌ Тесты не прошли"}')[steps.pytest.outputs.status] }}
             
-            Результаты тестов:
+            Результаты:
             ```
             ${{ steps.pytest.outputs.results }}
             ```
             
-            Подробности: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+            Ссылка на выполнение:
+            ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
         if: always()
