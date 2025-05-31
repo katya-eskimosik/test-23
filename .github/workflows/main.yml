@@ -1,4 +1,4 @@
-name: Python CI with Detailed Telegram Reports
+name: Python CI with Telegram Notifications
 
 on:
   push:
@@ -24,8 +24,14 @@ jobs:
           pip install -r requirements.txt
           pip install -e .
 
-      - name: Run tests and generate report
+      - name: Run tests and capture output
         id: pytest
+        continue-on-error: true  # Продолжаем workflow даже при ошибке тестов
         run: |
           # Запускаем тесты и сохраняем вывод
-          pytest --verbose > pytest_output.log
+          pytest --verbose > pytest_output.log 2>&1 || echo "Pytest завершился с ошибкой"
+          TEST_STATUS=$?
+          
+          # Формируем отчет
+          echo "=== Краткая
+          
