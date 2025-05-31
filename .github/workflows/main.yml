@@ -46,9 +46,9 @@ jobs:
         uses: appleboy/telegram-action@master
         with:
           token: ${{ secrets.TELEGRAM_TOKEN }}
-          chat_id: "946878017"
+          to: "946878017"
           message: |
-            ${{ fromJSON('{"0":"✅ Все тесты прошли успешно","1":"❌ Обнаружены ошибки в тестах"}')[steps.pytest.outputs.status] }}
+            ${{ fromJSON('{"0":"Все тесты прошли успешно","1":" Обнаружены ошибки в тестах"}')[steps.pytest.outputs.status] }}
             
             Результаты тестов:
             ```
