@@ -1,37 +1,26 @@
-name: Python CI with Full Error Reports
+name: CI
 
 on:
   push:
-    branches: ["main"]
+    branches: [ main ]
   pull_request:
-    branches: ["main"]
+    branches: [ main ]
 
 jobs:
-  test-and-notify:
-    runs-on: ubuntu-latest
-
+  test:
+    runs-on: ubuntu-22.04
     steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
+      - uses: actions/checkout@v4
 
       - name: Set up Python
         uses: actions/setup-python@v5
         with:
           python-version: "3.11"
-
+          cache: "pip"
       - name: Install dependencies
-        run: |
-          pip install -r requirements.txt
-          pip install -e .
-
-      - name: Run tests with detailed output
-        id: pytest
-        run: |
-          # Запускаем тесты с максимально подробным выводом
-          pytest -v --tb=line > pytest_output.log 2>&1 || true
-          
-          # Сохраняем статус выполнения
-          echo "status=$?" >> $
+        run: pip install -r requirements.txt
+      - name: Run tests
+        run: pytest .
 
 
           
